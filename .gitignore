@@ -396,3 +396,30 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# MoGe 
+/data
+/download
+/extract
+/view_point_cloud
+/view_depth_map
+/blobcache
+/snapshot
+/reference_embeddings
+/.msra_intern_s_toolkit
+/debug
+/workspace
+/mlruns
+/infer_output
+/video_output
+/eval_output
+/.blobcache
+/test_images
+/test_videos
+/vis
+/videos
+/raid
+/blobmnt
+/eval_dump
+/pretrained
+/.gradio
