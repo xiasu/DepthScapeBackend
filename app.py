@@ -51,15 +51,11 @@ def run(image: np.ndarray, remove_edge: bool = True, max_size: int = 800):
     output = model.infer(image_tensor, resolution_level=9, apply_mask=True)
     points, depth, mask = output['points'].cpu().numpy(), output['depth'].cpu().numpy(), output['mask'].cpu().numpy()
 
-    if remove_edge:
-        mask = mask & ~utils3d.numpy.depth_edge(depth, mask=mask, rtol=0.02)
-    mask = mask & (depth > 0)
-
     faces, vertices, vertex_colors, vertex_uvs = utils3d.numpy.image_mesh(
         points,
         image.astype(np.float32) / 255,
         utils3d.numpy.image_uv(width=width, height=height),
-        mask=mask & ~utils3d.numpy.depth_edge(depth, rtol=0.02, mask=mask),
+        mask=mask & ~utils3d.numpy.depth_edge(depth, mask=mask, rtol=0.02) if remove_edge else mask,
         tri=True
     )
     vertices, vertex_uvs = vertices * [1, -1, -1], vertex_uvs * [1, -1] + [0, 1]
