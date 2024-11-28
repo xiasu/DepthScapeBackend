@@ -88,7 +88,7 @@ output = model.infer(input_image)
 # For more usage details, see the `MoGeModel.infer` docstring.
 ```
 
-### Web demo
+### Using [scripts/app.py](scripts/app.py) for a web demo
 
 Make sure that `gradio` is installed and then run the following command to start the web demo:
  
@@ -99,7 +99,7 @@ python scripts/app.py   # --share for Gradio public sharing
 The web demo is also available at our [Hugging Face space](https://huggingface.co/spaces/Ruicheng/MoGe).
 
 
-### Using `scripts/infer.py`
+### Using [scripts/infer.py](scripts/infer.py)
 
 Run the script `scripts/infer.py` via the following command:
 
@@ -150,7 +150,7 @@ Options:
   --help                      Show this message and exit.
 ```
 
-### Using `scripts/infer_panorama.py` for 360-degree panorama images
+### Using [scripts/infer_panorama.py](scripts/infer_panorama.py) for 360-degree panorama images
 
 > *NOTE: This is an experimental extension of MoGe.*
 
