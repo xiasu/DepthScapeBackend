@@ -7,8 +7,9 @@
 
 ### Fixed
 - Suppressed unnecessary numpy runtime warnings.
-- Speficied recommended versions of requirements.
+- Specified recommended versions of requirements.
+  - Related issue: [#21](https://github.com/microsoft/MoGe/issues/21).
 
 ### Changed
-- Move `app.py` and `infer.py` to [scripts/](scripts/)
+- Moved `app.py` and `infer.py` to [scripts/](scripts/)
 - Improved edge removal. 
