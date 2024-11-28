@@ -150,7 +150,7 @@ Options:
   --help                      Show this message and exit.
 ```
 
-### Using [scripts/infer_panorama.py](scripts/infer_panorama.py) for 360-degree panorama images
+### Using [scripts/infer_panorama.py](scripts/infer_panorama.py) for 360° panorama images
 
 > *NOTE: This is an experimental extension of MoGe.*
 
