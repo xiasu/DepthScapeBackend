@@ -156,12 +156,37 @@ def main(
             save_ply(save_path, vertices, faces, vertex_colors)
 
         if show:
-            trimesh.Trimesh(
+            intrinsics[0, :] *= width  # Scale for width
+            intrinsics[1, :] *= height  # Scale for height
+
+            # Focal lengths and principal points
+            f_x = intrinsics[0, 0]
+            f_y = intrinsics[1, 1]
+            c_x = intrinsics[0, 2]
+            c_y = intrinsics[1, 2]
+
+            # Compute field-of-view (in radians)
+            fov_x = 2 * np.arctan(width / (2 * f_x))
+            fov_y = 2 * np.arctan(height / (2 * f_y))
+
+            
+            scene = trimesh.Scene()
+            mesh=trimesh.Trimesh(
                 vertices=vertices,
                 vertex_colors=vertex_colors,
                 faces=faces, 
                 process=False
-            ).show()  
+            )
+            scene.add_geometry(mesh)
+            scene.set_camera(center=(np.array([intrinsics[0,0],intrinsics[0,1],0])),resolution=(width, height), fov=(np.degrees(fov_x), np.degrees(fov_y)))
+            scene.show()
+            #The original show code
+            # trimesh.Trimesh(
+            #     vertices=vertices,
+            #     vertex_colors=vertex_colors,
+            #     faces=faces, 
+            #     process=False
+            # ).show()  
 
 
 if __name__ == '__main__':

@@ -423,3 +423,5 @@ FodyWeavers.xsd
 /eval_dump
 /pretrained
 /.gradio
+explore.ipynb
+output/room/mesh.ply
