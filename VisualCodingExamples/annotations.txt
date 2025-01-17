@@ -1,0 +1,118 @@
+Example1:
+The image depicts a draped figure covered entirely in a dark, flowing fabric, giving it an enigmatic and futuristic appearance. A circular digital text overlay with the words "4TH.CAPTERS" wraps around the figure, suggesting a technological or cyberpunk theme. 
+Visual Coding:
+MASK_0=Text2Mask(prompt = "the human figure")
+MESH_0=Mask2Mesh(mask = MASK_0)
+CYLINDER_0=Mesh2Cylinder(mesh = MESH_0, direction = NULL)
+CYLINDRICAL_0=Cylindrical(cylinder = CYLINDER_0, direction = NULL)
+
+Example2:
+The image is a promotional poster for the "Kinosmena 2016" International Short Film Festival. It features a creative and modern design with a slightly side-facing woman's face framed by geometric panels that face the same direction, adorned with intricate blue foliage.
+Visual Coding:
+MASK_0=Text2Mask(prompt = "the human figure")
+FACE_0=FaceExtraction(mask = MASK_0)
+PLANAR=Planar(plane = FACE_0.frontal, axis = NULL)
+
+Example3:
+The image is a promotional poster for a "Senior Day" basketball event at Fifth Third Arena. It emphasizes the theme "Senior Day" with large white letters positioned prominently on the court, perpendicular to the ground and also in parallel to the square court's edge.
+Visual Coding:
+MASK_0=Text2Mask(prompt = "basketball playground")
+MESH_0=Mask2Mesh(mask = MASK_0) 
+PLANE_0=Mesh2PLANE(mesh = MESH_0)
+PLANAR=Planar(direction_1 = PLANE_0.normal, direction_2 = PLANE_0.primary)
+
+Example4:
+The image is a poster for a "James Bond Symposium," prominently featuring a shiny gold bullet in a 3D perspective as the central visual element. Bold white text reading "JAMES BOND" wraps around the bullet, creating a dynamic and eye-catching effect.
+Visual Coding:
+MASK_0=Text2Mask(prompt="the bullet")
+MESH_0=Mask2Mesh(mask=MASK_0)
+CYLINDER_0=Mesh2Cylinder(mesh=MESH_0, direction=NULL)
+CYLINDRICAL_0=Cylindrical(cylinder=CYLINDER_0, direction=NULL)
+
+Example5:
+The poster features a monochromatic overhead view of a Chicago train moving along elevated tracks with streets and pedestrians below. Bold white text reading "SO FAST" is superimposed prominently in the center, emphasizing speed and motion, in parallel to the train moving direction.
+Visual Coding:
+MASK_0=Text2Mask(prompt = "train")
+MESH_0=Mask2Mesh(mask = MASK_0) 
+MASK_1=Text2Mask(prompt = "ground")
+MESH_1=Mask2Mesh(mask = MASK_1) 
+PLANE_0=Mesh2PLANE(mesh = MESH_0)
+LINE_0=Mesh2Line(mesh = MESH_1)
+PLANAR=Planar(direction_1 = PLANE_0.normal, direction_2 = LINE_0.direction)
+
+Example6:
+The image features a vintage-inspired design with a sepia-toned aerial view of a long, straight street cutting through an urban landscape, surrounded by shadowy buildings. The title "Invisible Streets" is prominently displayed along the street in bold, staggered white and yellow text, enhancing the sense of depth and direction.
+Visual Coding:
+MASK_0=Text2Mask(prompt = "highrise bridge in the input image")
+MESH_0=Mask2Mesh(mask = MASK0)
+PLANE_0=Mesh2Plane(mesh = MESH0)
+PLANAR=Planar(plane = PLANE_0, axis=PLANE_0.primary)
+
+Example7:
+The poster features a bold and energetic design, centered around a runner in motion. The background is white, with bright pink accents, including large, dynamic block text that forms an abstract, geometric pattern. This block text background is positioned to be in parallel to the running direction of the runner.
+Visual Coding:
+MASK_0=Text2Mask(prompt = "runner")
+SKELETON_0=SkeletonExtraction(mask=MASK_0)
+PLANAR_0=Planar(plane = SKELETON_0.median,  direction = Null)
+
+Example8:
+The image showcases a vibrant aerial view of a city at night, filled with illuminated skyscrapers, streets, and bustling urban life. Overlaid on the cityscape, bold white typography spells out the phrase "NO OTHER GAME," cutting across the buildings with a dramatic, immersive perspective.
+Visual Coding:
+MASK_0=Text2Mask(prompt = "the front building in the input image")
+MESH_0=Mask2Mesh(depth = DEPTH, mask = MASK_0)
+BOX_0=Mesh2Box(mesh = MESH_0)
+PLANAR=Planar(Box = BOX_0, axis = NULL)
+
+Example9:
+The image features a relay race scene in a vibrant stadium setting, with one runner handing off the baton to another. The slogan "WE OFFER YOU THE BETTER, BETTER SOLUTION" is prominently displayed on the left side in bold, colorful text, placed in realistic perspective perpendicular to the ground but in parallel to the running direction of the runner.
+Visual Coding:
+MASK0=Text2Mask(prompt = "ground")
+MESH0=Mask2Mesh(mask = MASK0)
+MASK1=Text2Mask(prompt = "the runner in the middle")
+SKELETON_0=SkeletonExtraction(mask = MASK1)
+PLANE_0=Mesh2PLANE(mesh = MESH0)
+PLANAR=Planar(plane = SKELETON_0.median, direction = PLANE_0.normal)
+
+Example10:
+The image showcases two travelers walking towards an airport terminal. Both individuals are carrying luggage and backpacks, signaling they are either returning from or embarking on a journey. The text "BACK TO HOME" is prominently displayed in large white letters across the sky, with the perspective that looks like the text is parallel to the building facede.
+Visual Coding:
+MASK_0=Text2Mask(prompt = "building in the image")
+MESH_0=Mask2Mesh(mask = MASK0)
+PLANE_0=Mesh2Plane(mesh = MESH0)
+PLANAR=Planar(plane = PLANE_0, axis = NULL )
+
+Example11:
+The image is a conceptual and artistic design featuring a person with their face pixelated and obscured by bright yellow text reading "#31#." The repeated hashtag emphasizes anonymity and digital communication themes. Surrounding the figure are additional yellow text and graphic elements, including "Mélancolique Anonyme" (Melancholic Anonymous), phone numbers, and technical details like "Appel non taxé" (Non-taxed call), evoking the idea of an anonymous support line or mental health service.
+Visual Coding:
+MASK_0=Text2Mask(prompt = "the human face")
+FACE_0=FaceExtraction(mask = MASK_0)
+MESH_0=Mask2Mesh(mask = MASK_0)
+SPHERE_0=Mesh2Sphere(mesh = MESH_0)
+SPHERICAL_0=Spherical(sphere = SPHERE_0, direction = FACE_0.cranial)
+
+Example12:
+The image is a minimalist and striking poster featuring a baseball player in mid-action, running against a solid bright blue background. Beneath the player, bold white text spells out "AUSTIN" in a stretched, perspective style, seemingly being placed on the ground and aligned with the facing direction of the player, adding depth and focus to the design.
+Visual Coding:
+MASK0=Text2Mask(prompt ="floor")
+MESH0=Mask2Mesh(mask = MASK_0)
+MASK1=Text2Mask(prompt = "the player")
+SKELETON_0=SkeletonExtraction(mask = MASK_1)
+PLANE_0=Mesh2PLANE(mesh = MESH_0)
+PLANAR=Planar(plane = PLANE_0, direction = SKELETON_0.anterior)
+
+Example13:
+The poster promotes a 3D indoor biking experience with a Parisian theme. The Eiffel Tower dominates the background, and the tagline "VENHA PEDALAR PELAS RUAS DE PARIS" ("Come Pedal Through the Streets of Paris") is displayed in bold red and green text, emphasizing the immersive aspect of the activity. The text is placed perpendicular to the ground, while also in parallel to the edge of the road.
+Visual Coding:
+MASK0=Text2Mask(prompt = "driveway")
+MESH0=Mask2Mesh(mask = MASK_0) 
+PLANE_0=Mesh2PLANE(mesh = MESH_0)
+PLANAR=Planar(direction_1 = PLANE_0.normal, direction_2 = PLANE_0.primary)
+
+Example14:
+The poster is a bold, surreal design featuring a white classical bust with a futuristic twist. In the middle of the poster is a human head, with the top of the head appears cut open, revealing a black void, while the eyes glow red, giving a cyberpunk aesthetic. Large white typography dominates the composition, reading "WE ARE BACK IN BLACK", surrounding the head as a cylinder-like shape.
+Visual Coding:
+MASK_0=Text2Mask(prompt = "the human head")
+FACE_0=FaceExtraction(mask = MASK_0)
+MESH_0=Mask2Mesh(mask = MASK_0)
+CYLINDER_0=Mesh2Cylinder(mesh = MESH_0, direction = FACE_0.cranial)
+CYLINDRICAL_0=Cylindrical(cylinder = CYLINDER_0, direction = NULL)

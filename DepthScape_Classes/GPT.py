@@ -1,31 +1,29 @@
 import requests
-
+import os
+import base64
+try:
+    from openai import OpenAI  # newer versions
+    def create_client(api_key):
+        return OpenAI(api_key=api_key)
+except ImportError:
+    import openai  # older versions
+    def create_client(api_key):
+        openai.api_key = api_key
+        return openai
 class GPT:
-    def __init__(self, api_key, base_url="https://api.openai.com/v1/"):
+    def __init__(self, api_key, image_path):
         self.api_key = api_key
-        self.base_url = base_url
-
-    def send_image_with_prompt(self, image_path, additional_params=None):
-        """
-        Sends an image and a text prompt to GPT for parsing.
-
-        :param image_path: Path to the image file to send.
-        :param text_prompt: Text prompt to guide GPT's parsing of the image.
-        :param additional_params: Additional parameters for the request.
-        :return: The API response in JSON format.
-        """
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "multipart/form-data",
-        }
-
-        files = {
-            "image": open(image_path, "rb"),
-        }
-
-        # Prepare data payload
-        data = {
-            "prompt": "You are a design agent that tells user how to use several visual coding cells to process an input image and extract 3d coordination systems that can help user place visual contents into the image.\n\
+        self.client = create_client(api_key)
+        self.image_path=image_path
+        self.initialize_context()
+    def encode_image(self, image_path: str) -> str:
+        """Encode image to base64."""
+        with open(image_path, "rb") as image_file:
+            return base64.b64encode(image_file.read()).decode('utf-8')
+    def initialize_context(self):
+        """Initialize base conversation context with PDF content."""
+        self.examples_text = self.extract_example_text()
+        self.system_context = "You are a design agent that tells user how to use several visual coding cells to process an input image and extract 3d coordination systems that can help user place visual contents into the image.\n\
             The overall visual design process contains three main steps. First, an input image is processed into a depth map based on image semantics; Second, AI agent extract key object and shapes from the depth space, \
             generating some coordinate systems based on image semantics and deoth information; Thirdly, the extracted coordinate system is rendered in 3D to assist user place visual content into the depth space, while the \
             depth map assist the creation of occlusion effects. In this case, extra visual elements, like text or shapes, can be conveniently placed into the original image with realistic perspective and occlusion, as if \
@@ -55,26 +53,50 @@ class GPT:
             Planar: a plane coordinate system. It takes a geometry and an optional direction to construct. E.g. PLANAR_0=planar(plane=PLANE_0, direction=DIRECTION_0) or PLANAR_0=planar(box=BOX)\n\
             Cylindrical: a cylinder coordinate system. It takes a geometry and an optional direction to construct. E.g. CYLINDRICAL_0=cylindrical(cylinder=CYLINDER_0, direction=DIRECTION_0)\n\
             Spherical: a spherical coordinate system. It takes a geometry and an optional direction to construct. E.g. SPHERICAL_0=spherical(sphere=SPHERE_0)\n\
-            After all these background knowledge, here's an example of a visual coding that you will see. Please try to follow the formatting.\n\
-            Description of design: This poster design features a cityscape at night, viewed from an elevated perspective. The image showcases towering buildings with glowing windows, illuminated streets, and a dynamic urban atmosphere. Superimposed over the city scene is bold white text that reads \"NO OTHER NAME.\" The text appears to integrate with the perspective of the buildings, giving it a three-dimensional effect as if it were floating within the cityscape. The overall design combines urban aesthetics with a striking typographical element, creating a visually engaging and dramatic composition.\n\
-            Visual coding:\n\
-            MASK_0=Text2Mask(image=IMAGE, prompt=”the front building in the input image”)\n\
-            MESH_0=Mask2Mesh(depth=DEPTH, mask=MASK_0)\n\
-            BOX_0=Mesh2Box(mesh=MESH_0)\n\
-            PLANAR_0=Planar(Box=BOX_0)\n\
-            " 
-        }
+            After all these background knowledge, here's some examples of a visual coding that you will see. Please try to follow the formatting.\n"
+        self.system_context += self.examples_text 
+        
+    def extract_example_text(self):
+        example_dir='VisualCodingExamples'
+        content=""
+        with open(os.path.join(example_dir, 'annotations.txt'), 'r') as file:
+            content+=file.read()
+        return content
+    def send_image_with_prompt(self, image_path, text_prompt):
+        """
+        Sends an image and a text prompt to GPT for parsing.
 
-        # Include additional parameters if provided
-        if additional_params:  
-            data.update(additional_params)
+        :param image_path: Path to the image file to send.
+        :param text_prompt: Text prompt to guide GPT's parsing of the image.
+        :param additional_params: Additional parameters for the request.
+        :return: The API response in JSON format.
+        """
+        def encode_image(image_path):
+            with open(image_path, "rb") as image_file:
+                return base64.b64encode(image_file.read()).decode("utf-8")
+        base64_image = encode_image(image_path)
 
-        # API endpoint for image+text analysis (hypothetical endpoint)
-        url = self.base_url + "images/analyze_with_prompt"
-
-        response = requests.post(url, headers=headers, files=files, data=data)
-        response.raise_for_status()  # Raise an error for bad responses
-        return response.json()
+        response = self.client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": self.system_context + "\n" + text_prompt,
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},
+                        },
+                    ],
+                }
+            ],
+        )
+        #print(response.choices[0])
+        self.parse_image_result(response)
+        return response
 
     def parse_image_result(self, response):
         """
@@ -83,4 +105,8 @@ class GPT:
         :param response: The raw API response.
         :return: Structured results (e.g., text, description, or tags).
         """
-        
+        # Extract the relevant information from the response
+        # This is a placeholder for actual parsing logic
+        # For example, you might want to extract text or specific data points
+        self.GPT_JSON = response.choices[0].message.content
+        print(self.GPT_JSON)

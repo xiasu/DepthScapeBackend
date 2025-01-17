@@ -348,6 +348,7 @@ class MoGeModel(nn.Module):
             if focal.ndim == 0:
                 focal = focal[None].expand(points.shape[0])
             _, shift = recover_focal_shift(points, None if mask is None else mask > 0.5, focal=focal)
+        print("Focal:",focal)
         fx = focal / 2 * (1 + aspect_ratio ** 2) ** 0.5 / aspect_ratio
         fy = focal / 2 * (1 + aspect_ratio ** 2) ** 0.5 
         intrinsics = utils3d.torch.intrinsics_from_focal_center(fx, fy, 0.5, 0.5)

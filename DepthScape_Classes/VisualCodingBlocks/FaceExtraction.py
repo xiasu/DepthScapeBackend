@@ -1,0 +1,1 @@
+#This class leverage openpose to extract skeleton from a given image
