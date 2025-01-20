@@ -1,0 +1,24 @@
+{
+  "visualCodingProposals": [
+    {
+      "name": "Building Structure",
+      "description": "Extracts the main building structure from the image to create a planar coordinate system.",
+      "visual_code": [
+        "MASK_0=Text2Mask(prompt = \"the main building in the image\")",
+        "MESH_0=Mask2Mesh(mask = MASK_0)",
+        "PLANE_0=Mesh2Plane(mesh = MESH_0)",
+        "PLANAR_0=Planar(plane = PLANE_0, axis = PLANE_0.primary)"
+      ]
+    },
+    {
+      "name": "Sidewalk Area",
+      "description": "Extracts the sidewalk area adjacent to the building for a planar coordinate system.",
+      "visual_code": [
+        "MASK_0=Text2Mask(prompt = \"the sidewalk\")",
+        "MESH_0=Mask2Mesh(mask = MASK_0)",
+        "PLANE_0=Mesh2Plane(mesh = MESH_0)",
+        "PLANAR_0=Planar(plane = PLANE_0, direction = PLANE_0.normal)"
+      ]
+    }
+  ]
+}

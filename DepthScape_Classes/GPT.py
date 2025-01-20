@@ -1,6 +1,8 @@
 import requests
 import os
 import base64
+import json
+from .VisualCoding import VisualCoding
 try:
     from openai import OpenAI  # newer versions
     def create_client(api_key):
@@ -25,34 +27,33 @@ class GPT:
         self.examples_text = self.extract_example_text()
         self.system_context = "You are a design agent that tells user how to use several visual coding cells to process an input image and extract 3d coordination systems that can help user place visual contents into the image.\n\
             The overall visual design process contains three main steps. First, an input image is processed into a depth map based on image semantics; Second, AI agent extract key object and shapes from the depth space, \
-            generating some coordinate systems based on image semantics and deoth information; Thirdly, the extracted coordinate system is rendered in 3D to assist user place visual content into the depth space, while the \
+            generating some coordinate systems based on image semantics and depth information; Thirdly, the extracted coordinate system is rendered in 3D to assist user place visual content into the depth space, while the \
             depth map assist the creation of occlusion effects. In this case, extra visual elements, like text or shapes, can be conveniently placed into the original image with realistic perspective and occlusion, as if \
             they co-exist in the physical space.\n\
             Your role is an agent in the second step. Each time you are given an image to parse, you will receive the image itself, and also several textual examples of relevant designs as design description and visual coding.\
             Your job is to parse the image and the examples, then generate a list of visual codings in similar format, which guides the coordinate system extraction.\n\
             Here are the available visual coding cells:\n\
-            Text2Mask(image=IMAGE, text=\"PROMPT\") This cell extracts a certain object from the given image with a text prompt that you provide. When using it, you should replace the PROMPT with a descriptive text of the image part you want to select.\n\
-            Mask2Mesh(depth=DEPTH, mask=MASK) This cell extracts the depth mesh of a certain image part with a mask given. When using, you don't need to replace DEPTH. But do replace MASK with the mask variable gained in prior steps.\n\
+            Text2Mask(text=\"PROMPT\") This cell extracts a certain object from the given image with a text prompt that you provide. When using it, you should replace the PROMPT with a descriptive text of the image part you want to select.\n\
+            Mask2Mesh(mask=MASK) This cell extracts the depth mesh of a certain image part with a mask given. When using, you don't need to replace DEPTH. But do replace MASK with the mask variable gained in prior steps.\n\
             Mesh2Plane(mesh=MESH) This cell fits a plane to the given mesh. Please remember to replace the MESH with the certain mesh variable gained in prior steps.\n\
-            Mesh2Box(mesh=MESH) This cell fits a box to the given mesh. Please remember to replace the MESH with the certain mesh variable gained in prior steps.\n\
             Mesh2Sphere(mesh=MESH) This cell fits a sphere to the given mesh. Please remember to replace the MESH with the certain mesh variable gained in prior steps.\n\
-            Mesh2Cylinder(mesh=MESH,axis=DIRECTION) This cell fits a cylinder to the given mesh, with a given direction serving as central axis direction. Please remember to replace the MESH and DIRECTION with certain variables gained in prior steps.\n\
-            SkeletonExtraction(depth=DEPTH, mask=MASK) This cell extracts the skeleton of a human figure. Please replace the MASK with the corrsponding mask variable gained in prior steps\n\
-            FaceExtraction(depth=DEPTH, mask=MASK) This cell extracts the face of a human figure. Please replace the MASK with the corrsponding mask variable gained in prior steps\n\
+            Mesh2Line(mesh=MESH) This cell fits a line to the given mesh. Please remember to replace the MESH with the certain mesh variable gained in prior steps.\n\
+            Mesh2Cylinder(mesh=MESH,axis=DIRECTION) This cell fits a cylinder to the given mesh, with an optional direction serving as central axis direction. Please remember to replace the MESH and DIRECTION with certain variables gained in prior steps.\n\
+            SkeletonExtraction(mask=MASK) This cell extracts the skeleton of a human figure. Please replace the MASK with the corrsponding mask variable gained in prior steps\n\
+            FaceExtraction(mask=MASK) This cell extracts the face of a human figure. Please replace the MASK with the corrsponding mask variable gained in prior steps\n\
             Here are the geometry types that you can gain from these visual coding steps:\n\
             Mask: An image mask selected from the input image.\n\
             Mesh: A depth mesh selected from the depth space with given mask.\n\
-            Plane: A 3D plane located in the depth space. It can yield its norm direction by calling DIRECTION=Plane.norm \n\
-            Box: A 3D box located in the depth space. It can yield three directions by calling DIRECTIONs=Box.directions \n\
+            Plane: A 3D plane located in the depth space. It can yield its norm direction e.g. PLANE_0.normal. It can also yield some primary direction e.g. PLANE_0.primary, which indicates the direction of longer edge \n\
+            Line: A 3D line located in the depth space. It can yield its direction e.g. LINE_0.direction\n\
             Cylinder: A 3D cylinder located in the depth space.\n\
             Sphere: A 3D sphere located in the depth space.\n\
-            Skeleton: A human skeleton, comprised of 2D and 3D locations of all key joints, in the depth space. It can yield two directions, one as anterior (skeleton.anterior), one as cranial (skeleton.cranial).\n\
-            Face: A human face, comprised of 2D and 3D locations of all key points, in the depth space. It can yield two directions, one as anterior (skeleton.anterior), one as cranial (skeleton.cranial).\n\
-            Direction: A direction, which is a 3D vector in the depth space. It can be yielded from the above listed geometry.\n\
+            Skeleton: A human skeleton, comprised of 2D and 3D locations of all key joints, in the depth space. It can yield two directions, one as anterior (SKELETON_0.anterior), one as cranial (SKELETON_0.cranial). It can also yield two planes, one as median (SKELETON_0.median), one as frontal (SKELETON_0.frontal)\n\
+            Face: A human face, comprised of 2D and 3D locations of all key points, in the depth space. It can yield two directions, one pointing forward as anterior (FACE_0.anterior), one pointing up as cranial (FACE_0.cranial). It can also yield two planes, one as median (FACE_0.median), one as frontal (FACE_0.frontal)\n\
             Here are the types of output coordinate system that your visual coding should aim for and end up with:\n\
-            Planar: a plane coordinate system. It takes a geometry and an optional direction to construct. E.g. PLANAR_0=planar(plane=PLANE_0, direction=DIRECTION_0) or PLANAR_0=planar(box=BOX)\n\
-            Cylindrical: a cylinder coordinate system. It takes a geometry and an optional direction to construct. E.g. CYLINDRICAL_0=cylindrical(cylinder=CYLINDER_0, direction=DIRECTION_0)\n\
-            Spherical: a spherical coordinate system. It takes a geometry and an optional direction to construct. E.g. SPHERICAL_0=spherical(sphere=SPHERE_0)\n\
+            Planar: a plane coordinate system. It takes a plane geometry and an optional direction (which indicates the x direction inside that plane for content placement) to construct. E.g. PLANAR_0=planar(plane=PLANE_0, direction=LINE_0.direction). Sometimes it can also be created with two directions since two directions ca create a plane. e.g. PLANAR_1=planar(direction_1=PLANE_0.normal, direction_2=LINE_0.direction)\n\
+            Cylindrical: a cylinder coordinate system. It takes a cylinder geometry to construct. E.g. CYLINDRICAL_0=cylindrical(cylinder=CYLINDER_0)\n\
+            Spherical: a spherical coordinate system. It takes a sphere geometry to construct. E.g. SPHERICAL_0=spherical(sphere=SPHERE_0)\n\
             After all these background knowledge, here's some examples of a visual coding that you will see. Please try to follow the formatting.\n"
         self.system_context += self.examples_text 
         
@@ -95,8 +96,7 @@ class GPT:
             ],
         )
         #print(response.choices[0])
-        self.parse_image_result(response)
-        return response
+        return self.parse_image_result(response)
 
     def parse_image_result(self, response):
         """
@@ -110,3 +110,42 @@ class GPT:
         # For example, you might want to extract text or specific data points
         self.GPT_JSON = response.choices[0].message.content
         print(self.GPT_JSON)
+        visual_codings=[]
+        try:
+            # Parse the JSON string
+            data = json.loads(json_string)
+
+            # Validate the required structure
+            if "visualCodingProposals" not in data:
+                raise ValueError("JSON is missing 'visualCodingProposals' key.")
+
+            # Iterate over visual coding proposals
+            for proposal in data["visualCodingProposals"]:
+                name = proposal.get("name", "Unnamed Proposal")
+                description = proposal.get("description", "No description provided.")
+                visual_code = proposal.get("visual_code", [])
+                vc=VisualCoding(name,description,visual_code)
+                visual_codings.append(vc)
+                # print(f"Executing visual code for: {name}")
+                # print(f"Description: {description}")
+
+                # # Execution context
+                # context = {}
+
+                # # Execute each line of visual code
+                # for line in visual_code:
+                #     try:
+                #         print(f"Executing: {line}")
+                #         exec(line, globals(), context)
+                #     except Exception as e:
+                #         print(f"Error executing line '{line}': {e}")
+
+                # print(f"Completed execution for: {name}")
+                # print(f"Context: {context}\n")
+
+        except json.JSONDecodeError as e:
+            print(f"Error parsing JSON: {e}")
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+        self. visual_codings=visual_codings
+        return visual_codings

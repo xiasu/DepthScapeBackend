@@ -82,27 +82,27 @@ def ask_gpt(unique_id):
     depthScape = open_spaces[unique_id]
     depthScape.ask_GPT()
 
-@app.route('/stream/<image_id>', methods=['GET'])
-def stream_image_processing_results(image_id):
-    if image_id not in open_spaces:
-        return jsonify({"error": "Invalid ID"}), 404
-    #depthScape= open_spaces[image_id]
-    #In a total of 60 seconds, check if the corresponding glb file is generated every second. If so, send the url to the glb file with yield.
-    glb_info_sent=False
-    for i in range(60):
-        depthScape= open_spaces[image_id]
-        if depthScape:
-            if depthScape.glb_directory and not glb_info_sent:
-                yield f'data: {json.dumps({"type": "glb", "message": "GLB ready"})}\n\n'
-                print("GLB ready info sent")
-                glb_info_sent=True
-            GPT_JSON = depthScape.get_GPT_JSON()
-            if GPT_JSON:
-                yield f"data: {json.dumps({'type': 'json', 'data': GPT_JSON})}\n\n"
-            if depthScape.finished:
-                yield f'data: {json.dumps({"type": "status", "message": "Processing finished"})}\n\n'
-                break
-        time.sleep(1)
+# @app.route('/stream/<image_id>', methods=['GET'])
+# def stream_image_processing_results(image_id):
+#     if image_id not in open_spaces:
+#         return jsonify({"error": "Invalid ID"}), 404
+#     #depthScape= open_spaces[image_id]
+#     #In a total of 60 seconds, check if the corresponding glb file is generated every second. If so, send the url to the glb file with yield.
+#     glb_info_sent=False
+#     for i in range(60):
+#         depthScape= open_spaces[image_id]
+#         if depthScape:
+#             if depthScape.glb_directory and not glb_info_sent:
+#                 yield f'data: {json.dumps({"type": "glb", "message": "GLB ready"})}\n\n'
+#                 print("GLB ready info sent")
+#                 glb_info_sent=True
+#             GPT_JSON = depthScape.get_GPT_JSON()
+#             if GPT_JSON:
+#                 yield f"data: {json.dumps({'type': 'json', 'data': GPT_JSON})}\n\n"
+#             if depthScape.finished:
+#                 yield f'data: {json.dumps({"type": "status", "message": "Processing finished"})}\n\n'
+#                 break
+#         time.sleep(1)
 
 @app.route('/status/<image_id>', methods=['GET'])
 def check_status(image_id):

@@ -8,6 +8,9 @@ from PIL import Image
 import torch
 import numpy as np
 from .GPT import GPT
+from .VisualCoding import VisualCoding
+from .VisualCodingBlocks import Text2Mask, Mask2PointCloud, PointCloud2Line, PointCloud2Plane, PointCloud2Cylinder, PointCloud2Sphere, FaceExtraction, SkeletonExtraction
+from .CoordinateSystems import Planar, Cylindrical, Spherical
 class DepthScape:
     #This class implements all crucial image info of a given image and turn it into a DepthScape
     #Taking an image as input, this class implements most essential parsing functions to create proposal element placements
@@ -29,6 +32,8 @@ class DepthScape:
         self.scale = height/original_height
         self.glb_directory=None
         self.finished=False
+        self.GPT_JSON_results=[]
+        self.output_coordinate_systems=[]
         print('DepthScape initialized')
     def resize_img(self):
         max_size=1080
@@ -130,11 +135,9 @@ class DepthScape:
             # Ignore points behind the camera (negative z)
             if z <= 0:
                 continue
-
             # Calculate vertical and horizontal angles
             fov_y = 2 * np.arctan(np.abs(y) / z)
             fov_x = 2 * np.arctan(np.abs(x) / z)
-
             # Update max FOV values
             max_fov_y = max(max_fov_y, fov_y)
             max_fov_x = max(max_fov_x, fov_x)
@@ -148,15 +151,150 @@ class DepthScape:
         #self.visual_coding_texts=self.GPT.ask()
         #for visual_coding in self.visual_coding_texts:
         #    self.parse_visual_coding(visual_coding)
-        api_key = "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"
-        self.GPT=GPT(api_key,self.image_dir)
-        self.GPT.send_image_with_prompt(self.image_dir, "Please parse the image and generate one visual coding proposal. Make sure you only send the visual coding proposal and nothing else.")
-        pass
-    def parse_visual_coding(self,visual_coding):
-        pass
-    def get_GPT_JSON(self):
-        #for JSON_results in GPT.JSON_results:
-        #    if not JSON_results.sent:
-        #        JSON_results.sent=True
-        #        return JSON_results
+        with open('openAI-key.txt', 'r') as file:
+            api_key = file.read().strip()
+        self.GPT = GPT(api_key, self.image_dir)
+        prompt="Please parse the image and generate the most relevant visual coding proposal. Make sure your reply is in json format, which contains a list of visual coding proposal. Each proposal include a name, a description, and also the visual_code, which is a list of code lines.\n"
+        with open('VisualCodingExamples/GPT_Response_Example.txt', 'r') as file:
+            prompt+=file.read()
+        vcs=self.GPT.send_image_with_prompt(self.image_dir, prompt)
+        self.GPT_JSON_results=vcs
+        #Then execute all the collected visual coding
+        for vc in vcs:
+            self.output_coordinate_systems.append(self.conduct_visual_coding(vc))
+    def conduct_visual_coding(self,visual_coding):
+        #This function parses the visual coding and execute it
+        variables = {}
+        def parse_visual_code_line(line_text):
+            # Parse the line to extract output name, function name, and parameters
+            output_name = line_text.split('=')[0].strip()
+            func_and_params = line_text.split('=', 1)[1].strip()
+            func_name = func_and_params.split('(')[0].strip()
+            params_str = func_and_params[func_and_params.index('(') + 1:func_and_params.index(')')]
+            parameters = [param.strip() for param in params_str.split(',')]
+            return output_name, func_name, parameters
+        def parse_variable(variable_text):
+            #Parse this variable and see if it's a compound type and need to be specially addressed
+            # a compound type will be marked with a dot
+            if '.' in variable_text:
+                # Split the variable into its components
+                parts = variable_text.split('.')
+                # Retrieve the value from the variables dictionary
+                base = variables[parts[0]]
+                suffix = parts[1]
+                # Traverse the nested attributes
+                base_type=parts[0].split('_')[0] #Get the type of the base variable
+                if base_type == 'FACE':
+                    if suffix == 'median':
+                        return base.get_median()
+                    elif suffix == 'frontal':
+                        return base.get_frontal()
+                    elif suffix == 'anterior':
+                        return base.get_anterior()
+                    elif suffix == 'cranial':
+                        return base.get_cranial()
+                    else:
+                        raise ValueError(f"Unexpected compound variable encountered! {base_type} doesn't support {suffix} as suffix")
+                elif base_type == 'SKELETON':
+                     if suffix == 'median':
+                        return base.get_median()
+                    elif suffix == 'frontal':
+                        return base.get_frontal()
+                    elif suffix == 'anterior':
+                        return base.get_anterior()
+                    elif suffix == 'cranial':
+                        return base.get_cranial()
+                    else:
+                        raise ValueError(f"Unexpected compound variable encountered! {base_type} doesn't support {suffix} as suffix")
+                elif base_type == 'PLANE':
+                    if suffix == 'normal':
+                        return base.normal
+                    elif suffix == 'primary':
+                        return base.primary
+                    else:
+                        raise ValueError(f"Unexpected compound variable encountered! {base_type} doesn't support {suffix} as suffix")
+                elif base_type == 'LINE':
+                    if suffix == 'direction':
+                        return base.direction
+                    else:
+                        raise ValueError(f"Unexpected compound variable encountered! {base_type} doesn't support {suffix} as suffix")
+                elif base_type == 'CYLINDER':
+                    raise ValueError(f"Unexpected compound variable encountered! The {base_type} type is not supported yet.")
+                elif base_type == 'SPHERE':
+                    raise ValueError(f"Unexpected compound variable encountered! The {base_type} type is not supported yet.")
+                else:
+                    raise ValueError(f"Unexpected compound variable encountered! {base_type} is not supported yet.")
+            else
+                return variables[variable_text]
+        
+        for line in visual_coding.visual_code:
+            output_name, func_name, parameters = self.parse_visual_code_line(line)
+            if func_name == 'Text2Mask':
+                text_prompt = parameters[0].strip('"')
+                mask = Text2Mask.Text2Mask(self,text_prompt)
+                variables[output_name] = mask
+            elif func_name == 'Mask2Mesh':
+                input_mask = parse_variable(parameters[0].split('=')[1].strip())
+                pc= Mask2PointCloud.Mask2PointCloud(self,input_mask)
+                variables[output_name] = pc
+            elif func_name == 'Mesh2Plane':
+                input_pc =  parse_variable(parameters[0].split('=')[1].strip())
+                plane = PointCloud2Plane.PointCloud2Plane(input_pc)
+                variables[output_name] = plane
+            elif func_name == 'Mesh2Line':
+                input_pc =  parse_variable(parameters[0].split('=')[1].strip())
+                line = PointCloud2Line.PointCloud2Line(input_pc)
+                variables[output_name] = line
+            elif func_name == 'Mesh2Sphere':
+                input_pc =  parse_variable(parameters[0].split('=')[1].strip())
+                sphere = PointCloud2Sphere.PointCloud2Sphere(input_pc)
+                variables[output_name] = sphere
+            elif func_name == 'Mesh2Cylinder':
+                # Note that this line have two params. CYLINDER_0=Mesh2Cylinder(mesh=MESH_0, direction=NULL)
+                input_pc =  parse_variable(parameters[0].split('=')[1].strip())
+                input_direction = None if parameters[1].split('=')[1].strip() == 'NULL' else parse_variable(parameters[1].split('=')[1].strip())
+                cylinder = PointCloud2Cylinder.PointCloud2Cylinder(input_pc,input_direction)
+                variables[output_name] = cylinder
+            elif func_name == 'SkeletonExtraction':
+                input_mask =  parse_variable(parameters[0].split('=')[1].strip())
+                skeleton = SkeletonExtraction.SkeletonExtraction(input_mask)
+                variables[output_name] = skeleton
+            elif func_name == 'FaceExtraction':
+                input_mask =  parse_variable(parameters[0].split('=')[1].strip())
+                face = FaceExtraction.FaceExtraction(input_mask)
+                variables[output_name] = face
+            elif func_name == 'Planar':
+                #There are two cases. When given a plane and a direction, and when given two directions. Planar(plane = FACE_0.median, direction = NULL) || PLANAR=Planar(direction_1 = PLANE_0.normal, direction_2 = LINE_0.direction)
+                if 'plane' in parameters[0] and 'direction' in parameters[1]:
+                    base_plane= parse_variable(parameters[0].split('=')[1].strip())
+                    base_direction= None if parameters[1].split('=')[1].strip() == 'NULL' else parse_variable(parameters[1].split('=')[1].strip())
+                    return Planar(base_plane, base_direction)
+                else if 'direction_1' in parameters[0] and 'direction_2' in parameters[1]:
+                    base_direction_1= parse_variable(parameters[0].split('=')[1].strip())
+                    base_direction_2= parse_variable(parameters[1].split('=')[1].strip())
+                    return Planar(base_direction_1, base_direction_2)
+                else:
+                    raise ValueError(f"Unexpected parameters for Planar function: {parameters}")
+            elif func_name == 'Cylindrical':
+                #CYLINDRICAL_0=Cylindrical(cylinder=CYLINDER_0, direction=NULL)
+                base_cylinder= parse_variable(parameters[0].split('=')[1].strip())
+                base_direction= None if parameters[1].split('=')[1].strip() == 'NULL' else parse_variable(parameters[1].split('=')[1].strip())
+                return Cylindrical(base_cylinder, base_direction)
+            elif func_name == 'Spherical':
+                #SPHERICAL_0=Spherical(sphere=SPHERE_0, direction=NULL)
+                base_sphere= parse_variable(parameters[0].split('=')[1].strip())
+                base_direction= None if parameters[1].split('=')[1].strip() == 'NULL' else parse_variable(parameters[1].split('=')[1].strip())
+                return Spherical(base_sphere, base_direction)
+            else:
+                raise ValueError(f"Unknown function name: {func_name}")
+        return None
+    
+    def get_result_JSON(self):
+        #This function returns the JSON result of the GPT parsing and geometric extraction
+        GPT_results_count = len(self.GPT_JSON_results)
+        coordinate_systems_count = len(self.output_coordinate_systems)
+        if GPT_results_count != coordinate_systems_count:
+            raise ValueError("The number of GPT results and coordinate systems must match.")
+        for i in range(GPT_results_count):
+            #Produce a json that contains both information
         return None

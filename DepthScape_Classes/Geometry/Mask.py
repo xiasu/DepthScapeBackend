@@ -1,8 +1,4 @@
-from ..VisualCodingBlocks.Text2Mask import Text2Mask
-
 class Mask:
-    def __init__(self,depth_scape) :
+    def __init__(self,depth_scape,text,mask) :
         self.depthScape = depth_scape
-    def get_mask(self,text):
-        self.text = text
-        self.mask=Text2Mask()
+        self.mask = mask

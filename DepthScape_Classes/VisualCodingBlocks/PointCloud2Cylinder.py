@@ -3,13 +3,17 @@ from ..Geometry import PointCloud
 import numpy as np
 from scipy.spatial import ConvexHull
 
-def PointCloud2Cylinder(pointCloud):
+def PointCloud2Cylinder(pointCloud,direction):
+    if direction is not None:
+        return PointCloud2CylinderWithAxis(pointCloud, direction)
     selected_points = pointCloud.points
-    # Import necessary libraries
-
-    # Convert point cloud to numpy array
-    points = np.array(selected_points)
-
+    np.random.seed(42)
+    if selected_points.shape[0] > 10000:
+        random_indices = np.random.choice(selected_points.shape[0], 10000, replace=False)
+        random_points = selected_points[random_indices]
+    else:
+        random_points = selected_points[:]
+    points = np.array(random_points)
     # Compute the convex hull of the point cloud
     hull = ConvexHull(points)
 
@@ -43,9 +47,15 @@ def PointCloud2Cylinder(pointCloud):
 
 def PointCloud2CylinderWithAxis(pointCloud, axis):
     selected_points = pointCloud.points
+    np.random.seed(42)
+    if selected_points.shape[0] > 10000:
+        random_indices = np.random.choice(selected_points.shape[0], 10000, replace=False)
+        random_points = selected_points[random_indices]
+    else:
+        random_points = selected_points[:]
     # Import necessary libraries
     # Convert point cloud to numpy array
-    points = np.array(selected_points)
+    points = np.array(random_points)
 
     # Normalize the given axis
     axis = axis / np.linalg.norm(axis)
