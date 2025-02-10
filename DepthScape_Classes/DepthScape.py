@@ -10,7 +10,12 @@ import numpy as np
 from .GPT import GPT
 from .VisualCoding import VisualCoding
 from .VisualCodingBlocks import Text2Mask, Mask2PointCloud, PointCloud2Line, PointCloud2Plane, PointCloud2Cylinder, PointCloud2Sphere, FaceExtraction, SkeletonExtraction
-from .CoordinateSystems import Planar, Cylindrical, Spherical
+from .CoordinateSystems.Spherical import Spherical
+from .CoordinateSystems.Cylindrical import Cylindrical
+from .CoordinateSystems.Planar import Planar
+from .Geometry.PointCloud import PointCloud
+import dill
+import os
 class DepthScape:
     #This class implements all crucial image info of a given image and turn it into a DepthScape
     #Taking an image as input, this class implements most essential parsing functions to create proposal element placements
@@ -24,6 +29,9 @@ class DepthScape:
         self.image = cv2.cvtColor(cv2.imread(str(image_dir)), cv2.COLOR_BGR2RGB)
         original_height, original_width = self.image.shape[:2]
         self.resize_img()
+        resized_image_path = self.image_dir.replace('.jpg', '_resized.jpg')
+        cv2.imwrite(resized_image_path, cv2.cvtColor(self.image, cv2.COLOR_RGB2BGR))
+        self.resized_image_path = resized_image_path
         height, width = self.image.shape[:2]
         self.height = height
         self.width = width
@@ -58,6 +66,7 @@ class DepthScape:
         output = self.MOGE_model.infer(image_tensor)
         points, depth, mask, intrinsics = output['points'].cpu().numpy(), output['depth'].cpu().numpy(), output['mask'].cpu().numpy(), output['intrinsics'].cpu().numpy()
         self.points=points
+        self.pointCloud=PointCloud(points)
         self.depth=depth
         self.mask=mask
         self.intrinsics=intrinsics                                                                                                  
@@ -154,14 +163,29 @@ class DepthScape:
         with open('openAI-key.txt', 'r') as file:
             api_key = file.read().strip()
         self.GPT = GPT(api_key, self.image_dir)
-        prompt="Please parse the image and generate the most relevant visual coding proposal. Make sure your reply is in json format, which contains a list of visual coding proposal. Each proposal include a name, a description, and also the visual_code, which is a list of code lines.\n"
+        prompt="Please parse the image and generate the most relevant visual coding proposal. Make sure your reply is in json format, which contains a list of visual coding proposal. \
+            Each proposal include a name, a description, and also the visual_code, which is a list of code lines. At this moment only give me facial and skeletal plane coordinate systems.\
+                 When returning facial and skeletal planes, always include both the  frontal and median as two separate cases. Note that if you want to create a facial plane, the mask text prompt should be about the entire human figure, not just the face, or the segmentation may fail.\n"
         with open('VisualCodingExamples/GPT_Response_Example.txt', 'r') as file:
             prompt+=file.read()
-        vcs=self.GPT.send_image_with_prompt(self.image_dir, prompt)
-        self.GPT_JSON_results=vcs
+        self.GPT_JSON_results=self.GPT.send_image_with_prompt(self.image_dir, prompt)
         #Then execute all the collected visual coding
-        for vc in vcs:
-            self.output_coordinate_systems.append(self.conduct_visual_coding(vc))
+        for vc in self.GPT_JSON_results:
+            
+            try:
+                result = self.conduct_visual_coding(vc)
+            except Exception as e:
+                print(f"Error conducting visual coding: {e}")
+                result = None
+            if isinstance(result, list):
+                for item in result:
+                    self.output_coordinate_systems.append(item)
+            elif result is not None:
+                self.output_coordinate_systems.append(result)
+            else:
+                pass
+        
+            #self.output_coordinate_systems.append(self.conduct_visual_coding(vc))
     def conduct_visual_coding(self,visual_coding):
         #This function parses the visual coding and execute it
         variables = {}
@@ -180,7 +204,11 @@ class DepthScape:
                 # Split the variable into its components
                 parts = variable_text.split('.')
                 # Retrieve the value from the variables dictionary
-                base = variables[parts[0]]
+                try:
+                    base = variables[parts[0]]
+                except Exception as e:
+                    print(f"Error getting variable {parts[0]}: {e}")
+                    return None
                 suffix = parts[1]
                 # Traverse the nested attributes
                 base_type=parts[0].split('_')[0] #Get the type of the base variable
@@ -196,7 +224,7 @@ class DepthScape:
                     else:
                         raise ValueError(f"Unexpected compound variable encountered! {base_type} doesn't support {suffix} as suffix")
                 elif base_type == 'SKELETON':
-                     if suffix == 'median':
+                    if suffix == 'median':
                         return base.get_median()
                     elif suffix == 'frontal':
                         return base.get_frontal()
@@ -207,6 +235,9 @@ class DepthScape:
                     else:
                         raise ValueError(f"Unexpected compound variable encountered! {base_type} doesn't support {suffix} as suffix")
                 elif base_type == 'PLANE':
+                #In this case, the base object can be a list. To simplify the situation, just return the first base
+                    if isinstance(base, list):
+                        base = base[0]
                     if suffix == 'normal':
                         return base.normal
                     elif suffix == 'primary':
@@ -224,14 +255,20 @@ class DepthScape:
                     raise ValueError(f"Unexpected compound variable encountered! The {base_type} type is not supported yet.")
                 else:
                     raise ValueError(f"Unexpected compound variable encountered! {base_type} is not supported yet.")
-            else
+            else:
                 return variables[variable_text]
         
         for line in visual_coding.visual_code:
-            output_name, func_name, parameters = self.parse_visual_code_line(line)
+            output_name, func_name, parameters = parse_visual_code_line(line)
             if func_name == 'Text2Mask':
-                text_prompt = parameters[0].strip('"')
+                text_prompt = parameters[0].split('=')[1].strip().strip('"')
                 mask = Text2Mask.Text2Mask(self,text_prompt)
+                if mask is None:
+                    return None
+                mask_image = (mask.mask).astype(np.uint8)
+                mask_image_path =self.image_dir.replace('.jpg', f'_masked_{text_prompt}.jpg')
+                cv2.imwrite(mask_image_path, mask_image)
+                print("Mask saved at " + mask_image_path)
                 variables[output_name] = mask
             elif func_name == 'Mask2Mesh':
                 input_mask = parse_variable(parameters[0].split('=')[1].strip())
@@ -257,44 +294,60 @@ class DepthScape:
                 variables[output_name] = cylinder
             elif func_name == 'SkeletonExtraction':
                 input_mask =  parse_variable(parameters[0].split('=')[1].strip())
-                skeleton = SkeletonExtraction.SkeletonExtraction(input_mask)
+                skeleton = SkeletonExtraction.SkeletonExtraction(self,input_mask)
                 variables[output_name] = skeleton
             elif func_name == 'FaceExtraction':
                 input_mask =  parse_variable(parameters[0].split('=')[1].strip())
-                face = FaceExtraction.FaceExtraction(input_mask)
+                face = FaceExtraction.FaceExtraction(self,input_mask)
                 variables[output_name] = face
             elif func_name == 'Planar':
                 #There are two cases. When given a plane and a direction, and when given two directions. Planar(plane = FACE_0.median, direction = NULL) || PLANAR=Planar(direction_1 = PLANE_0.normal, direction_2 = LINE_0.direction)
                 if 'plane' in parameters[0] and 'direction' in parameters[1]:
                     base_plane= parse_variable(parameters[0].split('=')[1].strip())
-                    base_direction= None if parameters[1].split('=')[1].strip() == 'NULL' else parse_variable(parameters[1].split('=')[1].strip())
-                    return Planar(base_plane, base_direction)
-                else if 'direction_1' in parameters[0] and 'direction_2' in parameters[1]:
+                    base_direction_1= None if parameters[1].split('=')[1].strip() == 'NULL' else parse_variable(parameters[1].split('=')[1].strip())
+                    base_direction_2 = None
+                    if isinstance(base_plane, list):
+                        planars=[]
+                        for plane in base_plane:
+                            planars.append(Planar(plane, base_direction_1 , base_direction_2,visual_coding,variables))
+                        return planars
+                    else:
+                        return Planar(base_plane, base_direction_1 , base_direction_2,visual_coding,variables)
+                elif 'direction_1' in parameters[0] and 'direction_2' in parameters[1]:
+                    base_plane = None
                     base_direction_1= parse_variable(parameters[0].split('=')[1].strip())
                     base_direction_2= parse_variable(parameters[1].split('=')[1].strip())
-                    return Planar(base_direction_1, base_direction_2)
+                    return Planar(base_plane, base_direction_1, base_direction_2,visual_coding,variables)
                 else:
                     raise ValueError(f"Unexpected parameters for Planar function: {parameters}")
             elif func_name == 'Cylindrical':
                 #CYLINDRICAL_0=Cylindrical(cylinder=CYLINDER_0, direction=NULL)
                 base_cylinder= parse_variable(parameters[0].split('=')[1].strip())
                 base_direction= None if parameters[1].split('=')[1].strip() == 'NULL' else parse_variable(parameters[1].split('=')[1].strip())
-                return Cylindrical(base_cylinder, base_direction)
+                return Cylindrical(base_cylinder, base_direction,visual_coding,variables)
             elif func_name == 'Spherical':
                 #SPHERICAL_0=Spherical(sphere=SPHERE_0, direction=NULL)
                 base_sphere= parse_variable(parameters[0].split('=')[1].strip())
                 base_direction= None if parameters[1].split('=')[1].strip() == 'NULL' else parse_variable(parameters[1].split('=')[1].strip())
-                return Spherical(base_sphere, base_direction)
+                return Spherical(base_sphere, base_direction,visual_coding,variables)
             else:
                 raise ValueError(f"Unknown function name: {func_name}")
         return None
     
     def get_result_JSON(self):
         #This function returns the JSON result of the GPT parsing and geometric extraction
-        GPT_results_count = len(self.GPT_JSON_results)
-        coordinate_systems_count = len(self.output_coordinate_systems)
-        if GPT_results_count != coordinate_systems_count:
-            raise ValueError("The number of GPT results and coordinate systems must match.")
-        for i in range(GPT_results_count):
-            #Produce a json that contains both information
-        return None
+        result = {
+            "coordinate_systems": [coordinate_system.json for coordinate_system in self.output_coordinate_systems]
+        }
+        # Save coordinate systems as pickle files
+        
+        # Create directory if it doesn't exist
+        # pickle_dir = os.path.join(self.save_mesh_directory, 'coordinate_systems')
+        # os.makedirs(pickle_dir, exist_ok=True)
+        
+        # # Save each coordinate system
+        # for i, coord_sys in enumerate(self.output_coordinate_systems):
+        #     pickle_path = os.path.join(pickle_dir, f'coordinate_system_{i}.pkl')
+        #     with open(pickle_path, 'wb') as f:
+        #         dill.dump(coord_sys, f)
+        return result

@@ -14,4 +14,5 @@ def PointCloud2Sphere(pointCloud):
     #TODO: check if this fitting works. We may need a containing fitter instead.
     sphere1 = pyrsc.Sphere()
     center, radius, best_inliers = sphere1.fit(random_points, 0.01)
-    return Sphere(center, radius, best_inliers)
+    center_np=np.array(center)
+    return Sphere(center_np, radius, best_inliers)

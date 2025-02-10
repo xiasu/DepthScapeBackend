@@ -60,7 +60,7 @@ def upload_image():
     process_image(unique_id, image_path, save_path)
     #executor.submit(ask_gpt, unique_id)
     ask_gpt(unique_id)
-    return jsonify({"id": unique_id,"fov": open_spaces[unique_id].fov}), 200
+    return jsonify({"id": unique_id,"fov": open_spaces[unique_id].fov,"results": open_spaces[unique_id].get_result_JSON()}), 200
 
 #@celery.task
 def process_image(unique_id ,image_path,save_path):

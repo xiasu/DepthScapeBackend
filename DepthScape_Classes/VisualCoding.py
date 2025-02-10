@@ -1,4 +1,4 @@
-class VisualCoding
+class VisualCoding:
     def __init__(self,name,description,visual_code):
         self.name = name
         self.description = description

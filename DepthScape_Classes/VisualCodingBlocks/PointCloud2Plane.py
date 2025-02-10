@@ -13,11 +13,12 @@ def PointCloud2Plane(pointCloud):
         random_points = selected_points[:]
     #Use iterative plane detection instead!
     count_points=len(random_points)
+    thresh=pointCloud.radius*0.05
     found_planes = []
     #Then iteratively apply plane detection, with a maximum of 3 planes, to the selected points. Each time a plane is detected, remove the inliers from the point cloud and repeat the process until no more planes can be detected.
     for i in range(3): 
         plane = pyrsc.Plane()
-        best_eq, best_inliers = plane.fit(random_points,thresh=0.05)
+        best_eq, best_inliers = plane.fit(random_points,thresh=thresh)
         pl=Plane(best_eq[0],best_eq[1],best_eq[2],best_eq[3],random_points[best_inliers])
         # Remove inliers from the point cloud
         random_points = np.delete(random_points, best_inliers, axis=0)

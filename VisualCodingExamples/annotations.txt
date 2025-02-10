@@ -123,3 +123,10 @@ Visual Coding:
 MASK_0=Text2Mask(prompt = "the human figure")
 FACE_0=FaceExtraction(mask = MASK_0)
 PLANAR=Planar(plane = FACE_0.median, direction = NULL)
+
+Example16:
+The poster features a bold and energetic design, centered around a runner in motion. The background is white, with bright pink accents, including a large, dynamic block text that surrounds the runner. Since there isn't any visible ground surface in the poster, the cylinder of text is formed based on the runner figure's shape.
+MASK_0=Text2Mask(prompt = "runner")
+MESH_0=Mask2Mesh(mask = MASK_0)
+CYLINDER_0=Mesh2Cylinder(mesh = MESH_0, direction = NULL)
+CYLINDRICAL_0=Cylindrical(cylinder = CYLINDER_0, direction = NULL)

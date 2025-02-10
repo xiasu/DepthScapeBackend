@@ -54,6 +54,7 @@ class GPT:
             Planar: a plane coordinate system. It takes a plane geometry and an optional direction (which indicates the x direction inside that plane for content placement) to construct. E.g. PLANAR_0=planar(plane=PLANE_0, direction=LINE_0.direction). Sometimes it can also be created with two directions since two directions ca create a plane. e.g. PLANAR_1=planar(direction_1=PLANE_0.normal, direction_2=LINE_0.direction)\n\
             Cylindrical: a cylinder coordinate system. It takes a cylinder geometry to construct. E.g. CYLINDRICAL_0=cylindrical(cylinder=CYLINDER_0)\n\
             Spherical: a spherical coordinate system. It takes a sphere geometry to construct. E.g. SPHERICAL_0=spherical(sphere=SPHERE_0)\n\
+            Please note that all the parameter naming should be consistent with the examples, and also within the same visual coding. The variables are NOT shared between different visual codings.\n\
             After all these background knowledge, here's some examples of a visual coding that you will see. Please try to follow the formatting.\n"
         self.system_context += self.examples_text 
         
@@ -96,6 +97,8 @@ class GPT:
             ],
         )
         #print(response.choices[0])
+        self.GPT_JSON = response.choices[0].message.content
+        #return self.GPT_JSON
         return self.parse_image_result(response)
 
     def parse_image_result(self, response):
@@ -111,21 +114,21 @@ class GPT:
         self.GPT_JSON = response.choices[0].message.content
         print(self.GPT_JSON)
         visual_codings=[]
-        try:
+        #try:
             # Parse the JSON string
-            data = json.loads(json_string)
+        data = json.loads(self.GPT_JSON.strip().strip("```").lstrip("json").strip())
 
-            # Validate the required structure
-            if "visualCodingProposals" not in data:
-                raise ValueError("JSON is missing 'visualCodingProposals' key.")
+        # Validate the required structure
+        if "visualCodingProposals" not in data:
+            raise ValueError("JSON is missing 'visualCodingProposals' key.")
 
-            # Iterate over visual coding proposals
-            for proposal in data["visualCodingProposals"]:
-                name = proposal.get("name", "Unnamed Proposal")
-                description = proposal.get("description", "No description provided.")
-                visual_code = proposal.get("visual_code", [])
-                vc=VisualCoding(name,description,visual_code)
-                visual_codings.append(vc)
+        # Iterate over visual coding proposals
+        for proposal in data["visualCodingProposals"]:
+            name = proposal.get("name", "Unnamed Proposal")
+            description = proposal.get("description", "No description provided.")
+            visual_code = proposal.get("visual_code", [])
+            vc=VisualCoding(name,description,visual_code)
+            visual_codings.append(vc)
                 # print(f"Executing visual code for: {name}")
                 # print(f"Description: {description}")
 
@@ -143,9 +146,9 @@ class GPT:
                 # print(f"Completed execution for: {name}")
                 # print(f"Context: {context}\n")
 
-        except json.JSONDecodeError as e:
-            print(f"Error parsing JSON: {e}")
-        except Exception as e:
-            print(f"Unexpected error: {e}")
+        # except json.JSONDecodeError as e:
+        #     print(f"Error parsing JSON: {e}")
+        # except Exception as e:
+        #     print(f"Unexpected error: {e}")
         self. visual_codings=visual_codings
         return visual_codings
