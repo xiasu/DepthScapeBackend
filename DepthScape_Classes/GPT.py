@@ -44,14 +44,16 @@ class GPT:
             Here are the geometry types that you can gain from these visual coding steps:\n\
             Mask: An image mask selected from the input image.\n\
             Mesh: A depth mesh selected from the depth space with given mask.\n\
-            Plane: A 3D plane located in the depth space. It can yield its norm direction e.g. PLANE_0.normal. It can also yield some primary direction e.g. PLANE_0.primary, which indicates the direction of longer edge \n\
-            Line: A 3D line located in the depth space. It can yield its direction e.g. LINE_0.direction\n\
-            Cylinder: A 3D cylinder located in the depth space.\n\
-            Sphere: A 3D sphere located in the depth space.\n\
+            Plane: A 3D plane located in the depth space. It is used to fit planar objects, like a table, a floor, etc. It can yield its norm direction e.g. PLANE_0.normal. \
+                It can also yield some primary direction e.g. PLANE_0.primary, which indicates the direction of longer edge. It can also yield its extruded surface, \
+                    which are two planes that take one of the plane's primary direction and its normal as x and y direction. e.g. PLANE_0.extruded \n\
+            Line: A 3D line located in the depth space. It is used to capture the position and direction of a long object, like a train, a sidewalk, etc. It can yield its direction e.g. LINE_0.direction.\n\
+            Cylinder: A 3D cylinder located in the depth space. It is used to contain a given shape in the depth space, like a human figure, a building, etc.\n\
+            Sphere: A 3D sphere located in the depth space. It is used to capture a round object, like a ball, a human head, etc. It can also be used to contain a given shape in the depth space.\n\
             Skeleton: A human skeleton, comprised of 2D and 3D locations of all key joints, in the depth space. It can yield two directions, one as anterior (SKELETON_0.anterior), one as cranial (SKELETON_0.cranial). It can also yield two planes, one as median (SKELETON_0.median), one as frontal (SKELETON_0.frontal)\n\
             Face: A human face, comprised of 2D and 3D locations of all key points, in the depth space. It can yield two directions, one pointing forward as anterior (FACE_0.anterior), one pointing up as cranial (FACE_0.cranial). It can also yield two planes, one as median (FACE_0.median), one as frontal (FACE_0.frontal)\n\
             Here are the types of output coordinate system that your visual coding should aim for and end up with:\n\
-            Planar: a plane coordinate system. It takes a plane geometry and an optional direction (which indicates the x direction inside that plane for content placement) to construct. E.g. PLANAR_0=planar(plane=PLANE_0, direction=LINE_0.direction). Sometimes it can also be created with two directions since two directions ca create a plane. e.g. PLANAR_1=planar(direction_1=PLANE_0.normal, direction_2=LINE_0.direction)\n\
+            Planar: a plane coordinate system. It takes a plane geometry to construct. E.g. PLANAR_0=planar(plane=PLANE_0), PLANAR_0=planar(plane=FACE_0.median), PLANAR_0=planar(plane=PLANE_0.extruded).\n\
             Cylindrical: a cylinder coordinate system. It takes a cylinder geometry to construct. E.g. CYLINDRICAL_0=cylindrical(cylinder=CYLINDER_0)\n\
             Spherical: a spherical coordinate system. It takes a sphere geometry to construct. E.g. SPHERICAL_0=spherical(sphere=SPHERE_0)\n\
             Please note that all the parameter naming should be consistent with the examples, and also within the same visual coding. The variables are NOT shared between different visual codings.\n\

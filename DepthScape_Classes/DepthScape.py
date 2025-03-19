@@ -303,10 +303,10 @@ class DepthScape:
                 variables[output_name] = face
             elif func_name == 'Planar':
                 #There are two cases. When given a plane and a direction, and when given two directions. Planar(plane = FACE_0.median, direction = NULL) || PLANAR=Planar(direction_1 = PLANE_0.normal, direction_2 = LINE_0.direction)
-                if 'plane' in parameters[0] and 'direction' in parameters[1]:
+                if 'plane' in parameters[0]: #and 'direction' in parameters[1]:
                     base_plane= parse_variable(parameters[0].split('=')[1].strip())
-                    base_direction_1= None if parameters[1].split('=')[1].strip() == 'NULL' else parse_variable(parameters[1].split('=')[1].strip())
-                    base_direction_2 = None
+                    #base_direction_1= None if parameters[1].split('=')[1].strip() == 'NULL' else parse_variable(parameters[1].split('=')[1].strip())
+                    #base_direction_2 = None
                     if isinstance(base_plane, list):
                         planars=[]
                         for plane in base_plane:
@@ -316,25 +316,22 @@ class DepthScape:
                     else:
                         #return Planar(base_plane, base_direction_1 , base_direction_2,visual_coding,variables)
                         return Planar(base_plane, visual_coding,variables)
-                elif 'direction_1' in parameters[0] and 'direction_2' in parameters[1]:
-                    base_plane = None
-                    base_direction_1= parse_variable(parameters[0].split('=')[1].strip())
-                    base_direction_2= parse_variable(parameters[1].split('=')[1].strip())
-                    #return Planar(base_plane, base_direction_1, base_direction_2,visual_coding,variables)
-                    return Planar(base_plane, visual_coding,variables)
+                # elif 'direction_1' in parameters[0] and 'direction_2' in parameters[1]:
+                #     base_plane = None
+                #     base_direction_1= parse_variable(parameters[0].split('=')[1].strip())
+                #     base_direction_2= parse_variable(parameters[1].split('=')[1].strip())
+                #     return Planar(base_plane, base_direction_1, base_direction_2,visual_coding,variables)
                 else:
                     raise ValueError(f"Unexpected parameters for Planar function: {parameters}")
             elif func_name == 'Cylindrical':
                 #CYLINDRICAL_0=Cylindrical(cylinder=CYLINDER_0, direction=NULL)
                 base_cylinder= parse_variable(parameters[0].split('=')[1].strip())
                 #base_direction= None if parameters[1].split('=')[1].strip() == 'NULL' else parse_variable(parameters[1].split('=')[1].strip())
-                #return Cylindrical(base_cylinder, base_direction,visual_coding,variables)
                 return Cylindrical(base_cylinder, visual_coding,variables)
             elif func_name == 'Spherical':
                 #SPHERICAL_0=Spherical(sphere=SPHERE_0, direction=NULL)
                 base_sphere= parse_variable(parameters[0].split('=')[1].strip())
                 #base_direction= None if parameters[1].split('=')[1].strip() == 'NULL' else parse_variable(parameters[1].split('=')[1].strip())
-                #return Spherical(base_sphere, base_direction,visual_coding,variables)
                 return Spherical(base_sphere, visual_coding,variables)
             else:
                 raise ValueError(f"Unknown function name: {func_name}")

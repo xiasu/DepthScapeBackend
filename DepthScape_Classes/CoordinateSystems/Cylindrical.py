@@ -17,6 +17,7 @@ class Cylindrical:
         self.json = {
             "name":self.visual_coding.name if self.visual_coding else "Cylindrical Coordinate System",
             "description":self.visual_coding.description if self.visual_coding else "Cylindrical Coordinate System",
+            "name":self.visual_coding.name if self.visual_coding else "Cylindrical",
             "type": "Cylindrical",
             "center": self.center.tolist(),
             "axis": self.axis.tolist(),
