@@ -12,7 +12,9 @@ class Plane:
         norm = np.linalg.norm(self.normal)
         if norm != 0:
             self.normal = self.normal / norm
-        self.get_primary_and_boundary()
+        if len(inliers) > 0:
+            self.get_primary_and_boundary()
+            self.extruded = self.get_extruded()
         #self.boundary = self.get_boundary()
         
     def get_primary_and_boundary(self):
@@ -98,6 +100,51 @@ class Plane:
                 point = self.center + offset
                 boundary_points.append(point)
         return np.array(boundary_points)
+    def get_extruded(self):
+        #This method should return the extruded plane.
+        #The extruded planes are two planes that are perpendicular to the original plane and are of the same size.
+        #The extruded plane should use one of the primary direction as its new primary direction, and the other direction as its normal vector.
+        #The extruded plane should be of the same size as the original plane.
+        
+        extruded_planes = []
+        
+        # Create two extruded planes
+        for i in range(2):
+            # For the first extruded plane, use primary[0] as primary and normal as second direction
+            # For the second extruded plane, use primary[1] as primary and normal as second direction
+            primary_dir = self.primary[i]
+            normal_dir = self.normal
+            
+            # The other primary direction becomes the normal of the extruded plane
+            other_primary = self.primary[(i+1)%2]
+            
+            # Calculate the plane equation coefficients (ax + by + cz + d = 0)
+            a, b, c = other_primary
+            # Calculate d using a point on the plane (the center)
+            d = -np.dot(other_primary, self.center)
+            
+            # Create the new plane
+            extruded_plane = Plane(a, b, c, d, [])
+            
+            # Set the primary directions, center, and span for the extruded plane
+            # Primary directions are the selected primary direction and the normal of the original plane
+            new_primary = [primary_dir, normal_dir]
+            
+            # Use the same center as the original plane
+            new_center = self.center.copy()
+            
+            # The span should match the original plane's corresponding dimension
+            # and use the height/thickness for the dimension along the normal
+            new_span = np.array([self.span[i], self.span[(i+1)%2]])  # Using the same span for simplicity
+            
+            # Set the properties of the extruded plane
+            extruded_plane.set_primary_center_span(new_primary, new_center, new_span)
+            
+            extruded_planes.append(extruded_plane)
+            
+        return extruded_planes
+        
+        
     
 
 

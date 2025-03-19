@@ -164,8 +164,7 @@ class DepthScape:
             api_key = file.read().strip()
         self.GPT = GPT(api_key, self.image_dir)
         prompt="Please parse the image and generate the most relevant visual coding proposal. Make sure your reply is in json format, which contains a list of visual coding proposal. \
-            Each proposal include a name, a description, and also the visual_code, which is a list of code lines. At this moment only give me facial and skeletal plane coordinate systems.\
-                 When returning facial and skeletal planes, always include both the  frontal and median as two separate cases. Note that if you want to create a facial plane, the mask text prompt should be about the entire human figure, not just the face, or the segmentation may fail.\n"
+            Each proposal include a name, a description, and also the visual_code, which is a list of code lines. At this moment give me the visual coding for all key objects you can find in the entire image."
         with open('VisualCodingExamples/GPT_Response_Example.txt', 'r') as file:
             prompt+=file.read()
         self.GPT_JSON_results=self.GPT.send_image_with_prompt(self.image_dir, prompt)
@@ -242,13 +241,15 @@ class DepthScape:
                         return base.normal
                     elif suffix == 'primary':
                         return base.primary
+                    elif suffix == 'extruded':
+                        return base.extruded
                     else:
                         raise ValueError(f"Unexpected compound variable encountered! {base_type} doesn't support {suffix} as suffix")
-                elif base_type == 'LINE':
-                    if suffix == 'direction':
-                        return base.direction
-                    else:
-                        raise ValueError(f"Unexpected compound variable encountered! {base_type} doesn't support {suffix} as suffix")
+                # elif base_type == 'LINE':
+                #     if suffix == 'direction':
+                #         return base.direction
+                #     else:
+                #         raise ValueError(f"Unexpected compound variable encountered! {base_type} doesn't support {suffix} as suffix")
                 elif base_type == 'CYLINDER':
                     raise ValueError(f"Unexpected compound variable encountered! The {base_type} type is not supported yet.")
                 elif base_type == 'SPHERE':
@@ -309,27 +310,32 @@ class DepthScape:
                     if isinstance(base_plane, list):
                         planars=[]
                         for plane in base_plane:
-                            planars.append(Planar(plane, base_direction_1 , base_direction_2,visual_coding,variables))
+                            #planars.append(Planar(plane, base_direction_1 , base_direction_2,visual_coding,variables))
+                            planars.append(Planar(plane, visual_coding,variables))
                         return planars
                     else:
-                        return Planar(base_plane, base_direction_1 , base_direction_2,visual_coding,variables)
+                        #return Planar(base_plane, base_direction_1 , base_direction_2,visual_coding,variables)
+                        return Planar(base_plane, visual_coding,variables)
                 elif 'direction_1' in parameters[0] and 'direction_2' in parameters[1]:
                     base_plane = None
                     base_direction_1= parse_variable(parameters[0].split('=')[1].strip())
                     base_direction_2= parse_variable(parameters[1].split('=')[1].strip())
-                    return Planar(base_plane, base_direction_1, base_direction_2,visual_coding,variables)
+                    #return Planar(base_plane, base_direction_1, base_direction_2,visual_coding,variables)
+                    return Planar(base_plane, visual_coding,variables)
                 else:
                     raise ValueError(f"Unexpected parameters for Planar function: {parameters}")
             elif func_name == 'Cylindrical':
                 #CYLINDRICAL_0=Cylindrical(cylinder=CYLINDER_0, direction=NULL)
                 base_cylinder= parse_variable(parameters[0].split('=')[1].strip())
-                base_direction= None if parameters[1].split('=')[1].strip() == 'NULL' else parse_variable(parameters[1].split('=')[1].strip())
-                return Cylindrical(base_cylinder, base_direction,visual_coding,variables)
+                #base_direction= None if parameters[1].split('=')[1].strip() == 'NULL' else parse_variable(parameters[1].split('=')[1].strip())
+                #return Cylindrical(base_cylinder, base_direction,visual_coding,variables)
+                return Cylindrical(base_cylinder, visual_coding,variables)
             elif func_name == 'Spherical':
                 #SPHERICAL_0=Spherical(sphere=SPHERE_0, direction=NULL)
                 base_sphere= parse_variable(parameters[0].split('=')[1].strip())
-                base_direction= None if parameters[1].split('=')[1].strip() == 'NULL' else parse_variable(parameters[1].split('=')[1].strip())
-                return Spherical(base_sphere, base_direction,visual_coding,variables)
+                #base_direction= None if parameters[1].split('=')[1].strip() == 'NULL' else parse_variable(parameters[1].split('=')[1].strip())
+                #return Spherical(base_sphere, base_direction,visual_coding,variables)
+                return Spherical(base_sphere, visual_coding,variables)
             else:
                 raise ValueError(f"Unknown function name: {func_name}")
         return None

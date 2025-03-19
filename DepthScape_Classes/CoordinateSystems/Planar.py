@@ -1,9 +1,9 @@
 import numpy as np
 class Planar:
-    def __init__(self, plane=None, direction_1=None, direction_2=None,visual_coding=None,variables=None):
+    def __init__(self, plane=None, visual_coding=None,variables=None):
         self.plane = plane
-        self.direction_1 = direction_1
-        self.direction_2 = direction_2
+        #self.direction_1 = direction_1
+        #self.direction_2 = direction_2
         self.visual_coding = visual_coding
         self.variables=variables
         self.calculate_parameters()
@@ -33,6 +33,7 @@ class Planar:
     def create_json(self):
         #Create a JSON representation of the planar coordinate system
         self.json = {
+            "name":self.visual_coding.name if self.visual_coding else "Planar Coordinate System",
             "description":self.visual_coding.description if self.visual_coding else "Planar Coordinate System",
             "type": "Planar",
             "normal": self.normal.tolist(),

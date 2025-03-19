@@ -1,7 +1,7 @@
 class Cylindrical:
-    def __init__(self, base_cylinder, base_direction,visual_coding,variables):
+    def __init__(self, base_cylinder, visual_coding,variables):
         self.base_cylinder = base_cylinder
-        self.base_direction = base_direction
+        #self.base_direction = base_direction
         self.visual_coding = visual_coding
         self.variables = variables
         self.calculate_parameters()
@@ -15,6 +15,7 @@ class Cylindrical:
     def create_json(self):
         #Create a JSON representation of the cylindrical coordinate system
         self.json = {
+            "name":self.visual_coding.name if self.visual_coding else "Cylindrical Coordinate System",
             "description":self.visual_coding.description if self.visual_coding else "Cylindrical Coordinate System",
             "type": "Cylindrical",
             "center": self.center.tolist(),
