@@ -23,7 +23,7 @@ class Planar:
             else:
                 self.center = np.zeros(3)
             self.span = self.plane.span
-            self.euler_angles = self.plane.euler_angles
+            #self.euler_angles = self.plane.euler_angles
         else:
             pass
             #Use the two directions to define the plane
@@ -41,6 +41,5 @@ class Planar:
             "plane_parameters": [float(self.plane.a), float(self.plane.b), float(self.plane.c), float(self.plane.d)] if self.plane else None,
             "primary": [dir.tolist() for dir in self.primary],
             "boundary": self.span.tolist() if hasattr(self, 'span') else None,
-            "euler_angles": self.euler_angles.tolist() if hasattr(self, 'euler_angles') else None,
         }
         #"boundary": self.boundary.tolist() if hasattr(self, 'boundary') else None,

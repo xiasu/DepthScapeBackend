@@ -164,7 +164,11 @@ class DepthScape:
             api_key = file.read().strip()
         self.GPT = GPT(api_key, self.image_dir)
         prompt="Please parse the image and generate the most relevant visual coding proposal. Make sure your reply is in json format, which contains a list of visual coding proposal. \
-            Each proposal include a name, a description, and also the visual_code, which is a list of code lines. At this moment give me the visual coding for all key objects you can find in the entire image."
+            Each proposal include a name, a description, and also the visual_code, which is a list of code lines. At this moment give me the visual coding for all key objects you can find in the entire image.\
+                 You may suggest multiple types of visual codings for one object. For example, for a human figure, you may suggest a cylindrical visual coding to surround the body, or the skeletal or facial planes to track their body.\
+                    For the skeletal and facial planes, you may suggest both the median and the frontal planes, but in different visual codings. \
+                    For a square object, you may suggest a planar visual coding, and also an extruded plane visual coding. \
+                        Remember to ensure that each visual coding only have one coordinate system as output."
         with open('VisualCodingExamples/GPT_Response_Example.txt', 'r') as file:
             prompt+=file.read()
         self.GPT_JSON_results=self.GPT.send_image_with_prompt(self.image_dir, prompt)

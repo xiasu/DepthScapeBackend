@@ -46,7 +46,7 @@ class GPT:
             Mesh: A depth mesh selected from the depth space with given mask.\n\
             Plane: A 3D plane located in the depth space. It is used to fit planar objects, like a table, a floor, etc. It can yield its norm direction e.g. PLANE_0.normal. \
                 It can also yield some primary direction e.g. PLANE_0.primary, which indicates the direction of longer edge. It can also yield its extruded surface, \
-                    which are two planes that take one of the plane's primary direction and its normal as x and y direction. e.g. PLANE_0.extruded \n\
+                    which are two planes that take one of the plane's primary direction and its normal as x and y direction. e.g. PLANE_0.extruded. You may suggest such a extruded plane when the object is a square and planar, e.g. a screen or a table. \n\
             Line: A 3D line located in the depth space. It is used to capture the position and direction of a long object, like a train, a sidewalk, etc. It can yield its direction e.g. LINE_0.direction.\n\
             Cylinder: A 3D cylinder located in the depth space. It is used to contain a given shape in the depth space, like a human figure, a building, etc.\n\
             Sphere: A 3D sphere located in the depth space. It is used to capture a round object, like a ball, a human head, etc. It can also be used to contain a given shape in the depth space.\n\
