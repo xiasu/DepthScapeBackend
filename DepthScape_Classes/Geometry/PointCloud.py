@@ -2,7 +2,9 @@ import numpy as np
 import random
 class PointCloud:
     def __init__(self, points):
-        self.points = points
+        # Filter out points with inf values in any coordinate
+        #print("Points shape:", points.shape)
+        self.points = points[~np.isinf(points).any(axis=1)]
         self.calculate_parameters()
     def calculate_parameters(self):
         self.center = np.mean(self.points, axis=0)

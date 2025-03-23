@@ -16,11 +16,15 @@ from .CoordinateSystems.Planar import Planar
 from .Geometry.PointCloud import PointCloud
 import dill
 import os
+import json
+import traceback
+import time
 class DepthScape:
     #This class implements all crucial image info of a given image and turn it into a DepthScape
     #Taking an image as input, this class implements most essential parsing functions to create proposal element placements
     def __init__(self, id ,image_dir, MOGE_model, device, save_mesh_directory) -> None:
         #Some fast and simple image processing
+        self.start_time = time.time()
         self.id = id
         self.MOGE_model = MOGE_model
         self.device = device
@@ -42,6 +46,14 @@ class DepthScape:
         self.finished=False
         self.GPT_JSON_results=[]
         self.output_coordinate_systems=[]
+        self.processing_results = []  # Store processing results including errors
+        self.timing = {
+            "total_time": 0,
+            "moge_time": 0,
+            "gpt_time": 0,
+            "masking_times": {},
+            "geometry_processing_times": {}
+        }
         print('DepthScape initialized')
     def resize_img(self):
         max_size=1080
@@ -61,12 +73,13 @@ class DepthScape:
         self.conduct_MoGe()
         #self.ask_GPT()
     def conduct_MoGe(self,threshold = 0.02):
+        moge_start_time = time.time()
         image_tensor = torch.tensor(self.image / 255, dtype=torch.float32, device=self.device).permute(2, 0, 1)
         # Inference 
         output = self.MOGE_model.infer(image_tensor)
         points, depth, mask, intrinsics = output['points'].cpu().numpy(), output['depth'].cpu().numpy(), output['mask'].cpu().numpy(), output['intrinsics'].cpu().numpy()
         self.points=points
-        self.pointCloud=PointCloud(points)
+        #self.pointCloud=PointCloud(points)
         self.depth=depth
         self.mask=mask
         self.intrinsics=intrinsics                                                                                                  
@@ -152,7 +165,30 @@ class DepthScape:
             max_fov_x = max(max_fov_x, fov_x)
         print("FOV x:", max_fov_x)
         print("FOV y:", max_fov_y)
+        if max_fov_y == 0:
+            #This means the image has plenty of sky so the corners are not reconstructed in the mesh. In this case, we can iterate through the image points to find the maximum FOV
+            max_fov_y = 0
+            max_y_2d = 0.5
+            max_point = None
+            height, width = self.image.shape[:2]
+            print("Height:", height, "Width:", width)
+            for i, point in enumerate(self.points.reshape(-1, 3)):
+                x, y, z = point
+                if z <= 0:
+                    continue
+                fov_y = 2 * np.arctan(np.abs(y) / z)
+                y_2d =np.abs(0.5-(i // width) / height)
+                if fov_y > max_fov_y:
+                    max_fov_y = fov_y
+                    max_y_2d = y_2d
+                    max_point = point
+            if max_y_2d < 0.5:
+                scaling_factor = 0.5 / max_y_2d
+                max_fov_y = 2 * np.arctan(np.abs(max_point[1]) * scaling_factor / max_point[2])
+                print("Adjusting fov y by a factor of", scaling_factor)
+            print("FOV y adjusted:", max_fov_y)
         self.fov=max_fov_y
+        self.timing["moge_time"] = time.time() - moge_start_time
 
     def ask_GPT(self):
         #Ask GPT to parse the image context and generate some visual coding proposals. 
@@ -160,6 +196,7 @@ class DepthScape:
         #self.visual_coding_texts=self.GPT.ask()
         #for visual_coding in self.visual_coding_texts:
         #    self.parse_visual_coding(visual_coding)
+        gpt_start_time = time.time()
         with open('openAI-key.txt', 'r') as file:
             api_key = file.read().strip()
         self.GPT = GPT(api_key, self.image_dir)
@@ -172,14 +209,32 @@ class DepthScape:
         with open('VisualCodingExamples/GPT_Response_Example.txt', 'r') as file:
             prompt+=file.read()
         self.GPT_JSON_results=self.GPT.send_image_with_prompt(self.image_dir, prompt)
+        self.timing["gpt_time"] = time.time() - gpt_start_time
         #Then execute all the collected visual coding
         for vc in self.GPT_JSON_results:
             
             try:
                 result = self.conduct_visual_coding(vc)
+                processing_result = {
+                    "visual_coding": vc,
+                    "status": "success",
+                    "result": result
+                }
             except Exception as e:
+                error_traceback = traceback.format_exc()
                 print(f"Error conducting visual coding: {e}")
+                print(error_traceback)
+                processing_result = {
+                    "visual_coding": vc,
+                    "status": "error",
+                    "error_message": str(e),
+                    "traceback": error_traceback,
+                    "result": None
+                }
                 result = None
+                
+            self.processing_results.append(processing_result)
+                
             if isinstance(result, list):
                 for item in result:
                     self.output_coordinate_systems.append(item)
@@ -188,9 +243,60 @@ class DepthScape:
             else:
                 pass
         
+        # Save the processing results to a JSON file
+        self.save_processing_results()
             #self.output_coordinate_systems.append(self.conduct_visual_coding(vc))
+            
+    def save_processing_results(self):
+        """Save all visual coding and processing results to a JSON file"""
+        self.timing["total_time"] = time.time() - self.start_time
+        results_path = os.path.join(self.save_mesh_directory, f'{self.id}_processing_results.json')
+        
+        # Convert processing results to a serializable format
+        serializable_results = []
+        for result in self.processing_results:
+            serializable_result = {
+                "visual_coding": result["visual_coding"].__dict__,
+                "status": result["status"],
+            }
+            
+            if result["status"] == "error":
+                serializable_result["error_message"] = result["error_message"]
+                serializable_result["traceback"] = result["traceback"]
+            
+            # Add timing information for this visual coding
+            vc_name = result["visual_coding"].name
+            if vc_name in self.timing["geometry_processing_times"]:
+                serializable_result["processing_time"] = self.timing["geometry_processing_times"][vc_name]
+            
+            # Add masking time if available
+            if vc_name in self.timing["masking_times"]:
+                serializable_result["masking_time"] = self.timing["masking_times"][vc_name]
+            
+            serializable_results.append(serializable_result)
+            
+        # Create the output dictionary
+        output_data = {
+            "id": self.id,
+            "image_path": self.image_dir,
+            "timing": {
+                "total_time": self.timing["total_time"],
+                "moge_time": self.timing["moge_time"],
+                "gpt_time": self.timing["gpt_time"]
+            },
+            "gpt_json_results": [result.__dict__ for result in self.GPT_JSON_results],
+            "processing_results": serializable_results
+        }
+        
+        # Save to file
+        with open(results_path, 'w') as f:
+            json.dump(output_data, f, indent=2)
+            
+        print(f"Processing results saved to {results_path}")
+        
     def conduct_visual_coding(self,visual_coding):
         #This function parses the visual coding and execute it
+        vc_start_time = time.time()
         variables = {}
         def parse_visual_code_line(line_text):
             # Parse the line to extract output name, function name, and parameters
@@ -266,6 +372,7 @@ class DepthScape:
         for line in visual_coding.visual_code:
             output_name, func_name, parameters = parse_visual_code_line(line)
             if func_name == 'Text2Mask':
+                mask_start_time = time.time()
                 text_prompt = parameters[0].split('=')[1].strip().strip('"')
                 mask = Text2Mask.Text2Mask(self,text_prompt)
                 if mask is None:
@@ -275,6 +382,11 @@ class DepthScape:
                 cv2.imwrite(mask_image_path, mask_image)
                 print("Mask saved at " + mask_image_path)
                 variables[output_name] = mask
+                mask_time = time.time() - mask_start_time
+                if visual_coding.name not in self.timing["masking_times"]:
+                    self.timing["masking_times"][visual_coding.name] = mask_time
+                else:
+                    self.timing["masking_times"][visual_coding.name] += mask_time
             elif func_name == 'Mask2Mesh':
                 input_mask = parse_variable(parameters[0].split('=')[1].strip())
                 pc= Mask2PointCloud.Mask2PointCloud(self,input_mask)
@@ -339,6 +451,14 @@ class DepthScape:
                 return Spherical(base_sphere, visual_coding,variables)
             else:
                 raise ValueError(f"Unknown function name: {func_name}")
+        
+        # Record the total geometry processing time for this visual coding
+        geometry_time = time.time() - vc_start_time
+        # Subtract masking time if any
+        if visual_coding.name in self.timing["masking_times"]:
+            geometry_time -= self.timing["masking_times"][visual_coding.name]
+        self.timing["geometry_processing_times"][visual_coding.name] = geometry_time
+        
         return None
     
     def get_result_JSON(self):
