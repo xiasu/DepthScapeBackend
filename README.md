@@ -1,3 +1,9 @@
+Xia Su adopted this repo to build the server of DepthScape. To start, please set up the environment following the original guidelines, then start the depth_scape_server.py
+To make the code work, be sure to fix these in code:
+1. Deploy grounded-sam-2 using [this forked repo](https://github.com/xiasu/Grounded-SAM-2), start the flask server and change the SERVER_URL in the Text2Mask.py file to match the grounded-sam-2 server.
+2. Replace the code in DepthScape.py (line 163) to use your own GPT token.
+3. Start the react server [from this repo](https://github.com/xiasu/Depth-based-2.5D-Design) to test out the full pipeline. Remember to replace the server url in App.tsx (line 114 and 132).
+
 <div align="center">
 
 # MoGe: Unlocking Accurate Monocular Geometry Estimation for Open-Domain Images with Optimal Training Supervision
