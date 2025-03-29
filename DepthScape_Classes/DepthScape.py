@@ -200,10 +200,11 @@ class DepthScape:
         with open('openAI-key.txt', 'r') as file:
             api_key = file.read().strip()
         self.GPT = GPT(api_key, self.image_dir)
-        prompt="Please parse the image and generate the most relevant visual coding proposal. Make sure your reply is in json format, which contains a list of visual coding proposal. \
-            Each proposal include a name, a description, and also the visual_code, which is a list of code lines. At this moment give me the visual coding for all key objects you can find in the entire image.\
-                 You may suggest multiple types of visual codings for one object. For example, for a human figure, you may suggest a cylindrical visual coding to surround the body, or the skeletal or facial planes to track their body.\
-                    For the skeletal and facial planes, you may suggest both the median and the frontal planes, but in different visual codings. \
+        prompt="Please parse the image and generate all potentially relevant visual coding proposal. Make sure your reply is in json format, which contains a list of visual coding proposal. \
+            Each proposal include a name, a description, and also the visual_code, which is a list of code lines. Give me the visual coding for all key objects you can find in the entire image.\
+                 You should also suggest all relevant types of visual codings for one object. For example, for a human figure, you can suggest a cylindrical visual coding to surround the body, or the skeletal or facial planes to track their body.\
+                    For the skeletal and facial planes, you should suggest both the median and the frontal planes, but in different visual codings, and differentiate them in the name.\
+                         Remember that even though you may be suggesting facial planes, you should still provide text prompt in the Text2Mask cell for the entire human figure, or the extraction may fail. \
                     For a square object, you may suggest a planar visual coding, and also an extruded plane visual coding. \
                         Remember to ensure that each visual coding only have one coordinate system as output."
         with open('VisualCodingExamples/GPT_Response_Example.txt', 'r') as file:
